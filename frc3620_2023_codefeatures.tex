@@ -21,9 +21,9 @@
 \newcommand{\zztt}[1]{{\texttt{\footnotesize{#1}}}}
 
 %opening
-\title{Noteworthy Features of the Average Joes' 2022 FRC Code}
+\title{Noteworthy Features of the Average Joes' 2023 FRC Code}
 \author{Doug Wegscheid}
-\date{January 5, 2023}
+\date{January 3, 2024}
 
 \begin{document}
 
@@ -45,19 +45,24 @@
 \zztt{hi()}
 \fi
 
-FRC Team 3620, "The Average Joes", from St.\ Joseph High School in St.\ Joseph, Michigan, is releasing their 2022 Java code for other FRC teams to learn from.
+FRC Team 3620, "The Average Joes", from St.\ Joseph High School in St.\ Joseph, Michigan, is releasing their 2023 Java code for other FRC teams to learn from.
 
 The robot code is available on github:
 \\
-\zztt{https://github.com/FRC3620/FRC3620\_2022\_CuriousGeorge}
+\zztt{https://github.com/FRC3620/FRC3620\_2023\_SteveThePirate}
 \\
-The \zztt{master} branch was typically what the team used for 2022 competition.
+The \zztt{master} branch was typically what the team used for 2023 competition.
 
 The Shuffleboard configuration is available on github:
 \\
-\zztt{https://github.com/FRC3620/FRC3620\_2022\_Shuffleboard}
+\zztt{https://github.com/FRC3620/FRC3620\_2023\_Shuffleboard}
 
 This paper is a summary of what the team programming mentor considers to be features that other FRC teams may want to look at and use: 
+augmented estimation of field position from AprilTags,
+odometry,
+ability to switch between different drive controllers without code changes.
+
+You may also want to look at our 2022 code and description: some features described there that we continued to use were
 event logging, data logging,
 using vision to guesstimate range and set up the shooter,
 onboard diagnostics,
@@ -72,247 +77,42 @@ We didn't generally keep track of where we got ideas that we reused, and apologi
 
 \section{Overview}
 
-Our 2022 FRC programming was done in Java (new) command-based code. We did \emph{not} use RobotBuilder this year.
+Our 2023 FRC programming was done in Java (new) command-based code.
 We did version control with git, using github as our central repository.
 
-Branch \zztt{master} had our code through the end of the 2022 season. After the end of the season, the students took on two projects: onboard diagnostics (code on branch \zztt{DiagnosticTest}), and code to try to automatically chase down cargo (branch \zztt{SummarCenterOnBall}).
+Branch \zztt{master} had our code through the end of the 2023 season. After the end of the season, the students took on individual projects to get somethings working that they never got working during the season.
 
 \iffalse
 In the past, I have listed out the student's names and graduation dates to acknowledge their efforts; because of privacy considerations, I cannot do this in this document.
 \else
-The code was developed by Liam Allen, Grace Yuan, Mariah Jhala, Mic Crawford, and myself\footnote{The graduated Drew Kellerer has his name is all over the git history because no one changed the git configuration on some of our PCs. Someone else may have had contributions to the code, but I can't find it in the history!}.
+The code was developed by Liam Allen\footnote{Now battling only 26" of snow at Michigan Tech}, AJ Bacolor, Mic Crawford, Mariah Jhala,  Manasvi Mogili, Yeshasvi Mogili, an Grace Yuan\footnote{Someone else may have had contributions to the code, but I can't find it in the history!}.
+They were mentored by Greg Fisbeck, Tearesa Wegscheid, and myself.
 \fi
 
 \pagebreak
 
-Here are the features of the 2022 code that may be of use to other teams:
+Here are the features of the 2023 code that may be of use to other teams:
 
 \begin{itemize}[topsep=0pt]
 	
-\item Event logging
+\item Augmented estimation of field position from AprilTags
 
-Event logging is the timestamped logging to a file of significant events during the execution of robot code.
-Events worth logging could include:
-\begin{itemize}[noitemsep,topsep=0pt]
-\item transitions between autonomous, teleop, test, and disabled states.
-\item initialization, end, and interruption of commands.
-\item blockage of operation because of limit switches.
-\item acquisition and loss of vision targets.
-\item brownouts.
-\item selection of different autonomous modes.
-\end{itemize}
+We used (and contributed to) PhotonVision.
 
-One of our requirements was that all logging be done at the roboRIO (not the driver station PC, which would consume valuable bandwidth).
+PhotonLib has a pose estimator.
+Part of it's estimation is based on an estimate of what angle we are viewing a target at (are we facing on a line perpendicular to the face of the target, or at some other angle?), and this what angle we were facing.
+It was more accurate to use the IMU to determine what angle we were facing and calculate based on that\footnote{I believe this has since been added to PhotonLib.}. See method \zztt{aprilTagsPeriodic()} in \zztt{VisionSubsystem}.
 
-Figure~\ref{fig:eventlog} is an example of an event log.
-\begin{figure}[h]
-\begin{mdframed}
-\begin{lstlisting}[basicstyle=\ttfamily\tiny]
-2022/04/22 12:16:18.646 [org.usfirst.frc3620.logger.DataLogger] INFO - setupOutputFile filename is 20220422-121618.csv
-2022/04/22 12:16:18.748 [org.usfirst.frc3620.logger.DataLogger] INFO - setting file to /home/lvuser/logs/20220422-121618.csv
-2022/04/22 12:16:18.797 [org.usfirst.frc3620.logger.DataLogger] INFO - Writing dataLogger to /home/lvuser/logs/20220422-121618.csv
-2022/04/22 12:19:04.890 [frc.robot.Robot] INFO - Initialized TeleOpDriveCommand
-2022/04/22 12:19:04.915 [frc.robot.Robot] INFO - Initialized IntakeOffCommand
-2022/04/22 12:19:04.965 [frc.robot.Robot] INFO - Switching from DISABLED to AUTONOMOUS
-2022/04/22 12:19:04.969 [frc.robot.Robot] INFO - running frc.robot.commands.StealBlueBallAuto@e9c95d
-2022/04/22 12:19:05.005 [frc.robot.Robot] INFO - Interrupted TeleOpDriveCommand
-2022/04/22 12:19:05.032 [frc.robot.Robot] INFO - Interrupted IntakeOffCommand
-2022/04/22 12:19:05.150 [org.usfirst.frc3620.logger.FastDataLoggerCollections] INFO - setFilename("StealBlueBallAuto")
-2022/04/22 12:19:05.825 [org.usfirst.frc3620.logger.FastDataLoggerCollections] INFO - setupOutputFile filename is StealBlueBallAuto_20220422-121905.csv
-2022/04/22 12:19:05.846 [org.usfirst.frc3620.logger.FastDataLoggerCollections] INFO - setting file to /home/lvuser/logs/StealBlueBallAuto_20220422-121905.csv
-2022/04/22 12:19:05.888 [frc.robot.Robot] INFO - Initialized StealBlueBallAuto
-2022/04/22 12:19:05.924 [frc.robot.subsystems.TurretSubsystem] INFO - new command: null -> frc.robot.commands.StealBlueBallAuto@e9c95d
-2022/04/22 12:19:05.941 [frc.robot.subsystems.ShooterSubsystem] INFO - new command: null -> frc.robot.commands.StealBlueBallAuto@e9c95d
-2022/04/22 12:19:07.528 [frc.robot.commands.AutoShootCommand] INFO - command initialize
-2022/04/22 12:19:08.087 [frc.robot.commands.AutoShootCommand] INFO - command end with false
-2022/04/22 12:19:08.249 [frc.robot.commands.AutoShootCommand] INFO - ready to pewpew: {"shooter.speed.actual":6266.0,"turret.position.error":0.004673555493354797,"vision.range":11.44796097925103,"vision.xdegrees":-1.6890519857406616,"vision.ylocation":9.09293270111084,"shooter.speed.requested":6269.568892321029,"turret.position.requested":176.97703988850117,"turret.position.actual":176.9723663330078,"hood.position.requested":16.543897731650887,"shooter.speed.ratio":0.9994307595334984,"hood.position.ratio":0.9887104353479965,"hood.position.actual":16.35712432861328}
-2022/04/22 12:19:08.271 [frc.robot.commands.PullTheTriggerCommand] INFO - doing pewpew: {"shooter.speed.actual":6279.0,"turret.position.error":0.004673555493354797,"vision.range":12.095945145858876,"vision.xdegrees":-1.0410798788070679,"vision.ylocation":6.479689598083496,"shooter.speed.requested":6269.568892321029,"turret.position.requested":176.97703988850117,"turret.position.actual":176.9723663330078,"hood.position.requested":16.543897731650887,"shooter.speed.ratio":1.0015042673333603,"hood.position.ratio":0.9887104353479965,"hood.position.actual":16.35712432861328}
-...
-2022/04/22 12:19:20.281 [frc.robot.Robot] INFO - Interrupted StealBlueBallAuto
-2022/04/22 12:19:20.321 [frc.robot.Robot] INFO - Switching from AUTONOMOUS to DISABLED
-2022/04/22 12:19:20.329 [frc.robot.subsystems.TurretSubsystem] INFO - new command: frc.robot.commands.StealBlueBallAuto@e9c95d -> null
-2022/04/22 12:19:20.336 [frc.robot.subsystems.ShooterSubsystem] INFO - new command: frc.robot.commands.StealBlueBallAuto@e9c95d -> null
-2022/04/22 12:19:20.579 [frc.robot.Robot] INFO - Switching from DISABLED to TELEOP
-2022/04/22 12:19:20.608 [frc.robot.Robot] INFO - FMS attached. Event name ROEBLING, match type Qualification, match number 91, replay number 1
-2022/04/22 12:19:20.615 [frc.robot.Robot] INFO - Alliance Red, position 2
-\end{lstlisting}
-\caption{Event log sample}
-\label{fig:eventlog}
-\end{mdframed}
-\end{figure}
+We did find that pose estimation got a little sketchy at greater distances, and put safeguards in place not to update our odometry if the target was far away.
 
-\item Data logging
+\item Odometry
 
-Data logging is the continuous timestamped logging of significant sensor data, actuator status, power statistics (voltage and current draw), and operator inputs to a file.
-This data could be processed after a test session, practice session, or match using LibreOffice Calc, Veusz, gnuplot, Excel\footnote{\$\$\$ ugh.}, or some other graphics or analytical software to provide plots of such data.
-We were able to (post-match) analyze this data and determine that we had a drive motor that was not drawing current. We discovered that the motor case was broken (attacked by another robot).
-Figure~\ref{fig:datalog} is an example of such a data log.
+We had not used the WPILib provided \zztt{SwerveDriveOdometry} classes in the past because of a lack of awareness of it's existence, and then a perception that it was difficult to use. It's there, and it's not hard. See \zztt{OdometrySubsystem}.
 
-\begin{figure}[h]
-\begin{mdframed}
-\begin{lstlisting}[basicstyle=\ttfamily\tiny,breaklines=true,literate={,}{{,\allowbreak}}1]
-meta,time,timeSinceStart,matchTime,robotMode,robotModeInt,batteryVoltage,can.utilization,can.receive_errors,can.transmit_errors,pdp.totalCurrent,pdp.totalPower,pdp.totalEnergy,vision.target.data_is_fresh,vision.target.found,vision.target.centered,vision.target.x,vision.target.y,vision.range,vision.cargo.x,vision.cargo.y,navx.absolute,navx.fixed,navx.offset,climber.power,climber.current,climber.temperature,drive.lf.az.home_encoder,drive.lf.az.encoder,drive.rf.az.home_encoder,drive.rf.az.encoder,drive.lb.az.home_encoder,drive.lb.az.encoder,drive.rb.az.home_encoder,drive.rb.az.encoder,drive.lf.drive_power,drive.rf.drive_power,drive.lb.drive_power,drive.rb.drive_power,drive.lf.drive_current,drive.rf.drive_current,drive.lb.drive_current,drive.rb.drive_current,shooter.main.requestedRPM,shooter.main.actualRPM,shooter.main.power,shooter.main.current,shooter.backspin.requestedRPM,shooter.backspin.actualRPM,shooter.backspin.power,shooter.backspin.current,shooter.preshooter.requestedRPM,shooter.preshooter.actualRPM,shooter.preshooter.power,shooter.preshooter.current,hood.requested_position,hood.actual_position,hood.power,hood.current,turret.power,turret.current,turret.requested_position,turret.current_position,intake.belt.power,intake.belt.current,intake.wheelbar.power,intake.wheelbar.current
-,04-22-2022 12:16:18.925,1.608995,0,DISABLED,1,12.51,0.98,0,0,2,0,0,1,0,0,NaN,NaN,NaN,-1.0,-1.0,-0.05,-0.05,0,0,0,24,2.61,85.51,3.72,144.92,2.64,86.63,1.53,-200.33,0,0,0,0,0,0,0,0,-1,0,0,0,-1,0,0,0,-1,-0,0,0,0,-0,0,0,0,0,0,-0,0,0,0,0
-,04-22-2022 12:16:18.984,1.668247,0,DISABLED,1,12.51,0.57,0,0,2,0,0,1,0,0,NaN,NaN,NaN,-1.0,-1.0,-0.05,-0.05,0,0,0,24,2.61,85.51,3.72,144.92,2.64,86.63,1.53,-200.33,0,0,0,0,0,0,0,0,-1,0,0,0,-1,0,0,0,-1,-0,0,0,0,-0,0,0,0,0,0,-0,0,0,0,0
-,04-22-2022 12:16:19.237,1.921520,0,DISABLED,1,12.51,0.55,0,0,2,0,0,1,0,0,NaN,NaN,NaN,-1.0,-1.0,-0.06,-0.06,0,0,0,24,2.61,85.51,3.72,144.92,2.64,86.63,1.53,-200.33,0,0,0,0,0,0,0,0,-1,0,0,0,-1,0,0,0,-1,-0,0,0,0,-0,0,0,0,0,0,-0,0,0,0,0
-,04-22-2022 12:16:19.463,2.146835,0,DISABLED,1,12.52,0.54,0,0,2,0,0,1,0,0,NaN,NaN,NaN,-1.0,-1.0,-0.06,-0.06,0,0,0,24,2.61,85.51,3.72,144.92,2.64,86.63,1.53,-200.33,0,0,0,0,0,0,0,0,-1,0,0,0,-1,0,0,0,-1,-0,0,0,0,-0,0,0,0,0,0,-0,0,0,0,0
-...
-,04-22-2022 12:19:04.845,167.526475,15,DISABLED,1,12.5,0.57,0,0,2,0,0,1,0,0,NaN,NaN,NaN,-1.0,-1.0,-0.56,-0.56,0,0,0,24,2.61,85.51,3.72,144.92,2.64,86.63,1.53,-200.33,0,0,0,0,0,0,0,0,-1,0,0,0,-1,0,0,0,-1,-0,0,0,0,-0,0,0,0,0,0,-0,0,0,0,0
-,04-22-2022 12:19:05.94,167.776152,15,AUTONOMOUS,2,12.5,0.89,0,0,2,0,0,1,0,0,NaN,NaN,NaN,-1.0,-1.0,-0.56,-0.56,0,0,0,24,2.61,85.51,3.72,144.92,2.64,86.63,1.53,-200.33,0,0,0,0,0,0,0,0,-1,0,0,0,-1,0,0,0,-1,-0,0,0,0,-0,0,0,0,0,0,-0,0,0,0,0
-,04-22-2022 12:19:05.347,168.029216,15,AUTONOMOUS,2,12.49,0.69,0,0,2,0,0,1,0,0,NaN,NaN,NaN,-1.0,-1.0,-0.56,-0.56,0,0,0,24,2.61,85.51,3.72,144.92,2.64,86.63,1.53,-200.33,0,0,0,0,0,0,0,0,-1,0,0,0,-1,0,0,0,-1,-0,0,0,0,-0,0,0,0,0,0,-0,0,0,0,0
-...
-,04-22-2022 12:19:20.113,182.795066,0,AUTONOMOUS,2,12.42,0.82,0,0,2,0,0,1,0,0,NaN,NaN,NaN,-1.0,-1.0,-97.6,82.4,180,0,0,24,3.82,-3.91,3.33,173.62,1.45,174.62,3.74,-361.97,0,0,0,0,0,0,0,0,-1,405.47,0,0,0,0,0,0,-1,-0,0,0,23.37,23.21,0.02,0,-0.01,0.22,180,180.08,0,0,0,0
-,04-22-2022 12:19:20.360,183.041356,135,DISABLED,1,12.42,0.4,0,0,2,0,0,1,0,0,NaN,NaN,NaN,-1.0,-1.0,-97.6,82.4,180,0,0,24,3.82,-3.91,3.33,173.62,1.45,174.62,3.74,-361.97,0,0,0,0,0,0,0,0,-1,347.75,0,0,0,0,0,0,-1,-0,0,0,23.37,22.98,0,0,0,0,180,180.08,0,0,0,0
-,04-22-2022 12:19:20.611,183.293154,135,TELEOP,3,12.41,0.47,0,0,2,0,0,1,0,0,NaN,NaN,NaN,-1.0,-1.0,-97.6,82.4,180,0,0,24,3.82,-3.91,3.33,173.62,1.45,174.62,3.74,-361.97,0,0,0,0,0,0,0,0,-1,302.34,0,0,0,0,0,0,-1,-0,0,0,23.37,20.76,0.03,0,-0.67,0,180,180.08,0,0,0,0
-...
-,04-22-2022 12:21:35.736,318.416255,0,TELEOP,3,11.83,0.78,0,0,18,0,0,1,0,0,NaN,NaN,NaN,-1.0,-1.0,-718.45,-178.45,180,-0.05,45.59,26,0.05,-449.62,4.47,813.47,0.17,1352.05,4.88,-806.71,0,0,0,0,0,0,0,0,-1,0.59,0,0,0,0,0,0,-1,-0,0,0,2,2.07,-0.01,0,-0,0.16,0,0.03,0,0,0,0
-,04-22-2022 12:21:35.987,318.666433,0,DISABLED,1,12.12,0.66,0,0,10,0,0,1,0,0,NaN,NaN,NaN,-1.0,-1.0,-718.05,-178.05,180,0,0,26,0.05,-449.62,4.47,813.47,0.17,1352.05,4.88,-806.71,0,0,0,0,0,0,0,0,-1,0.59,0,0,0,-2.93,0,0,-1,-0,0,0,2,2.07,0,0,0,0,0,0.03,0,0,0,0
-\end{lstlisting}
-\caption{Data log sample}
-\label{fig:datalog}
-\end{mdframed}
-\end{figure}
+\item Ability to switch between different drive controllers without code changes
 
-% let the figures take up a large part of the bottom of a page
-\renewcommand\topfraction{0.9}
-\renewcommand\bottomfraction{0.9}
-
-There is also a facility to log data very quickly. One use of this data was to track down inaccuracy in shooting groups of cargo; the first cargo would be on target, but subsequent cargo would fall short or long. A Veusz plat of data (Figure~\ref{fig:shooter2}) from the turret showed that the shooter was recovering fine, but the perceived angle to the target was jerking when from the recoil when cargo was show.
-
-\begin{figure}[!thbp]
-	\begin{mdframed}
-		\begin{center}
-			\includegraphics[scale=0.5]{shooter_angle.pdf}
-		\end{center}
-		\caption{Shooter position}
-		\label{fig:shooter2}
-	\end{mdframed}
-\end{figure}
-
-\pagebreak
-
-\item Using vision to guesstimate range and set up the shooter
-
-We originally used a derivation of \zztt{ChickenVision} to pick out the reflective tape around the upper hub. We moved to using a Limelight to reduce latency.
-
-Our shooter had a PID velocity-controlled main wheel, a backspin control wheel, and a belt driven tilting hood to direct the cargo. The speed of the backspin control wheel is determined from the speed of the main wheel, calculated to provide a set backspin on cargo that is shot. All of these need to be set for a given range. We picked 3 different ranges on the field, empirically determined good values for the wheel speed and hood position at each, and use that to develop a spline fit for setting those for intermediate ranges. The calculations for this are in \zztt{ShooterCalculator.calcMainRPM()}, \zztt{ShooterCalculator.calcHoodAngle()},  and \zztt{ShooterCalculator.calculateBackspinRPM()}.
-
-\item Onboard diagnostics
-
-The 2022 code sniffs the CAN bus and turns a Shuffleboard indicator red if any necessary devices are missing from the bus. \zztt{CANDeviceFinder} has the code to sniff the CAN bus, \zztt{RobotContainer.makeHardware()} determines what devices are necessary.
-
-Additionally, work was done over the summer of 2022 to start to provide a software routine to autonomously run motors through their paces and make sure they are responding. See branch \zztt{DiagnosticTest}.
-
-\item Haptic driver feedback
-
-The 2022 code would rumble the driver and operator controls when certain conditions were met (such as having the hub centered and shooter ready to shoot). See \zztt{RumbleCommand} and \zztt{RumbleSubsystem}.
-
-\item Sendable SparkMax devices
-
-CANSparkMax devices are not Sendable to a dashboard. Our \zztt{CANSparkMaxSendable} wrapper takes care of that.
-
-\item File based configuration
-
-We were still using our 2022-2021 robot to debug some code, but it differed from the 2022 robot. To facilitate running the code on multiple chassis (or on a mule board), we developed a JSON file based system for configuring the robot. We have a single version-controlled configuration file; the sections of JSON are indexed by the MAC address of the various roboRIOs that we use\footnote{We toyed with the idea of having separate files for each roboRIO, but the logistics of having to maintain separate files (and the issue of losing them if a roboRIO was swapped or imaged) drove us in the direction we took).}.
+Our driver had fallen in love with a FlySky controller. We have one, with no spare. It has radically different axis mappings than the XBox controllers we traditionally use; if it failed, we would need to do different controller mappings in the code. Rather than having two different sets of mappings and having to somehow manually switch between them, we created a \zztt{ChameleonController}. When the robot is enabled, it interrogates WPILib to see what the name of the controller is, and then subsequently uses the correct axis mappings.
 
 \end{itemize}
-
-\section {Log File Naming and Location}
-
-One of our requirements for logging was that the event and data logs should be placed in the same directory (on a thumb drive, if one is inserted in the roboRIO), and have the same name (but different file types).
-The filename format we decided on was based on the current time, and was formatted \mbox{``\zztt{yyyyMMdd-HHmmss}''} (which sorts correctly).
-For simplicity (and because none of our matches spanned any Daylight Savings Time changes) we decided to format the date and time using the Eastern Time Zone, where all our practices and matches took place (except for CMP). We considered using GMT (commonly used in industry because of it's unambiguous nature and lack of glitches around DST changes), but those advantages had no value here, and were offset by the disadvantage of having to do timezone conversion when trying to find the files for a particular time.
-
-New data and event log files (with new names) are written every time the robot code is restarted (at roboRIO boot, user code load, or user code restart). If multiple practice matches are played in a row, with no intervening roboRIO restarts, the data for all the matches will be in the same data and event logs.
-
-The roboRIO has no onboard realtime clock; the system clock appears to start at Linux epoch time 0 (January 1, 1970) when the roboRIO is booted.
-The system clock apparently is initialized to the driver station current time sometime during the establishment of communications between the driver station and the roboRIO.
-Until that initialization takes place, the roboRIO has no idea of the current time, and cannot determine the correct file name. We made the decision to just not log data or events until that occurs.
-
-The filename is derived from the system time at the instant of the first data or event logging that takes place after the system clock is set. 
-
-Method \zztt{getTimestampString()} in class \zztt{org.usfirst.frc3620.logger.LoggingMaster} contains the code that determines the filename for the data and event logs;
-\zztt{getTimestampString()} will return a null if the system clock has not yet been sent, else it provides the\mbox{``\zztt{yyyyMMdd-HHmmss}''} data.
-Once \zztt{getTimestampString()} has determine the correct name to use, the name is cached so that calls to determine event and data log file names return the same result, even though the calls happen at different times.
-
-The code to determine the directory to put the data and event logs into is in the \zztt{getLoggingDirectory()} method of \zztt{LoggingMaster}.
-It looks for a thumbdrive with a writable \zztt{logs} directory; if none is found, logging will go to /home/lvuser/logs.
-
-\section {Event Logging}
-
-We used the JRE provided java.util.logging framework to do the actual logging\footnote {
-We originally considered using Apache Log4j2 instead of java.util.logging, but Log4j2 has dependencies on parts of the Java runtime that were not present in the compact version of the Java runtime that FIRST has us install on the roboRIO in past years. We may look at this after the 2022 season, Log4j2 has substantial performance advantages over j.u.l., as well as a better user API than SLF4J).
-}, but used the SLF4J logging API as our mechanism for getting log events into java.util.logging\footnote{SLF4J has the capability to send events to different underlying loggers; using it insulates our code from changes if we decide to go to log4j2.}.
-
-The new command package made it simple to log command initializes, ends, and interruptions without coding logging into the individual commands, as we did in the past. Figure~\ref{fig:commandhook} contains the code (executed at \zztt{robotInit()})that made that possible.
-We did discover that the logging did not occur for commands executed as part of a \zztt{CommandGroup}.
-\begin{figure}[h]
-	\begin{mdframed}
-		\begin{lstlisting}[basicstyle=\ttfamily\tiny]
-			
-			CommandScheduler.getInstance().onCommandInitialize(new Consumer<Command>() {
-				//whenever a command initializes, the function declared below will run.
-				public void accept(Command command) {
-					logger.info("Initialized {}", command.getClass().getSimpleName());
-				}
-			});
-			
-			CommandScheduler.getInstance().onCommandFinish(new Consumer<Command>() {
-				//whenever a command ends, the function declared below will run.
-				public void accept(Command command) {
-					logger.info("Ended {}", command.getClass().getSimpleName());
-				}
-			});
-			
-			CommandScheduler.getInstance().onCommandInterrupt(new Consumer<Command>() {
-				//whenever a command is interrupted, the function declared below will run.
-				public void accept(Command command) {
-					logger.info("Interrupted {}", command.getClass().getSimpleName());
-				}
-			});
-		\end{lstlisting}
-		\caption{Telling the \zztt{CommandScheduler} to log command start/stops}
-		\label{fig:commandhook}
-	\end{mdframed}
-\end{figure}
-
-We have a \zztt{EventLogging.commandMessage} method to be called from \zztt{Command.initialize()} and \zztt{Command.end()}. This simply logs the command and the method name\footnote{It need to be fixed to print the interrupted flag on a call from \zztt{end()}.}. It's the same as \zztt{logger.info()} methods, but does not need to be updated as code is refactored or copied. The hook into the \zztt{CommandScheduler} has largely eliminated the need for this, but it is still helpful for any command this is part of a \zztt{CommandGroup}.
-
-Method \zztt{setup()} in class \zztt{org.usfirst.frc3620.logger.EventLogging} contains the code for programmatically setting up java.util.logging.
-It sets up a console handler (so that logged messages go to Riolog), and also sets up a custom file handler.
-The custom file handler will silently ignore logging attempts until it is able to get a valid log file name from LogTimestamp.
-\zztt{EventLogging} also has a custom event formatter that formats the events reasonably concisely.
-
-\zztt{EventLogging} has some useful convenience methods:
-\zztt{writeWarningToDS()} will write a message to the message area of the FRC Driver Station, and \zztt{exceptionToString()} makes a reasonably concise formatting of an exception.
-
-\zztt{EventLogging} also has a convenience method for getting an \zztt{org.slf4j.Logger} object for a class, and setting it up for the desired logging level.
-Use of this can be seen in the \zztt{Robot} class.
-j.u.l and Log4j2 are typically configured by using a configuration file.
-We rejected this because it required students that were debugging to make changes in both the modules they were debugging and the central log configuration.
-We finally landed on this compromise where the logging level for a module was set in the module's code when creating the logger for that module.
-
-\section {Data Logging}
-
-Data logging was taken care of in class \zztt{org.usfirst.frc3620.logger.DataLogger}. This class logs data to a file throughout the match.
-
-The setup for data logging can be found in method \zztt{robotInit()} of class Robot; when logging, the caller needs to provide a object that implements the \zztt{IDataLoggerDataProvider} interface.
-This interface defines a method that provided the names of the data items, and a method that provided the values of the data items to be logged.
-Class \zztt{RobotDataLoggerDataProvider} provides this interface.
-
-We also implemented class \zztt{FastDataLoggerCollections}, which is used to collect data quickly, then write it out at the end of an operation. This is what was used to generate the data for the plots for shooter PID tuning and shooter debugging.
-
-\section File based configuration
-
-Class \zztt{RobotParameters} is the superclass that custom sets of robot parameters should inherit from; the custom parameters for our 2022 is class \zztt{RobotParameters2022}.
-
-The file of parameters is at \zztt{src\\main\\deploy\\robot\_parameters.json}.
-It is a JSON array, each element of which has at least elements named \zztt{macAddress}, \zztt{makeAllCANDevices}, and \zztt{name}. Additional elements can be added; you just need to make sure there are corresponding fields in your subclass of \zztt{RobotParameters}.
-
-The magic incantation to read the parameters is:
-
-\noindent{\center{
-\zztt{robotParameters = (RobotParameters2022) RobotParametersContainer.getRobotParameters(RobotParameters2022.class);}
-}}
 
 \end{document}
